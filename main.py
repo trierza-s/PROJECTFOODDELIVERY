@@ -1,10 +1,10 @@
 import sys
 from models.user import User
 from structures.graph import GraphPeta
-from structures.tree import TreeNode
+from utility.menu import init_menu_tree
 from structures.circular_linked_list import CircularLinkedList
 from structures.double_linked_list import DoubleLinkedList
-from utility.file_handler import load_data, save_data
+from utility.file_handler import load_data, save_data, simpan_semua_cart, muat_semua_cart
 from utility.searching import binary_search
 from utility.sorting import merge_sort
 
@@ -23,9 +23,8 @@ class FoodDeliveryCLI:
         self.kode_promo_aktif = {"HEMAT10", "MAKANPUAS", "MakanEnak"}
         self.ongkir = {"motor": 2000, "mobil": 5000}
         
-        
         # (TREE) Membangun struktur hierarki menu restoran (Root -> Kategori -> Menu)
-        self.menu_tree = self.init_menu_tree()
+        self.menu_tree = init_menu_tree()
         
         # (DOUBLE LINKED LIST (DLL)) Menyimpan dan menampilkan katalog promo
         dll = DoubleLinkedList()
@@ -47,9 +46,15 @@ class FoodDeliveryCLI:
         
         # Menyimpan driver giliran pertama
         self.current_driver = cll.data_driver 
+
+        # Menyimpan menu
+        self.menu_tree = init_menu_tree()
         
         # Memuat data user dari file txt ke dalam self.users saat aplikasi pertama dibuka
         load_data(self)
+        
+        # Memuat data pesanan/cart yang tersimpan agar tidak hilang
+        muat_semua_cart(self)
 
     # ==============================================
     # BAGIAN 1: SISTEM AUTENTIKASI (LOGIN & DAFTAR)
@@ -62,6 +67,7 @@ class FoodDeliveryCLI:
             # Mencari data user di dalam dictionary berdasarkan key (username)
             user = self.users.get(uname)
             
+            # Jika username tidak ada di data
             if not user:
                 print("Gagal: Username tidak ditemukan!")
                 input("Tekan Enter untuk kembali...")
@@ -101,9 +107,10 @@ class FoodDeliveryCLI:
         except Exception as e:
             print(f"Error: {e}")
 
+    """Method untuk menangani proses pendaftaran akun pengguna baru."""
     def daftar(self):
-        """Method untuk menangani proses pendaftaran akun pengguna baru."""
         try:
+            # Perulangan sampai syarat username terpenuhi (minimal 4 karakter)
             while True:
                 uname = input("Username: ").strip()
 
@@ -143,92 +150,29 @@ class FoodDeliveryCLI:
             print(f"Error: {e}")
 
     # ==========================================
-    # BAGIAN 2: INISIALISASI DATA MENU (TREE)
+    # BAGIAN 2: UTILITAS TAMPILAN
     # ==========================================
 
-    def init_menu_tree(self):
-        """Membangun struktur Tree untuk hierarki menu.
-        Root (Aplikasi) -> Node Anak (Restoran) -> Node Cucu (Kategori) -> Node Cicit (Item Menu)
-        """
-        # Titik paling atas (Root)
-        root = TreeNode("Daftar Restoran") 
-
-        # --- 1. RESTORAN A ---
-        resto_a = TreeNode("Restoran A")
-        
-        # Kategori Makanan Resto A
-        makanan_a = TreeNode("Makanan") 
-        makanan_a.add_child(TreeNode("Ayam Geprek", 15000))
-        makanan_a.add_child(TreeNode("Mie Setan", 12000))
-        makanan_a.add_child(TreeNode("Kwetiau Goreng", 16000))
-        makanan_a.add_child(TreeNode("Nila Bakar", 20000))
-        makanan_a.add_child(TreeNode("Lele Goreng", 15000))
-        
-        # Kategori Minuman Resto A
-        minuman_a = TreeNode("Minuman") 
-        minuman_a.add_child(TreeNode("Es Teh Manis", 5000))
-        minuman_a.add_child(TreeNode("Es Jeruk", 6000))
-        minuman_a.add_child(TreeNode("Es Timun", 4000))
-        minuman_a.add_child(TreeNode("Teh Hangat", 3000))
-        minuman_a.add_child(TreeNode("Jus Mangga", 7000))
-        
-        # Menggabungkan kategori ke dalam Restoran A
-        resto_a.add_child(makanan_a)
-        resto_a.add_child(minuman_a)
-
-        # --- 2. RESTORAN B ---
-        resto_b = TreeNode("Restoran B")
-        
-        cemilan_b = TreeNode("Cemilan")
-        cemilan_b.add_child(TreeNode("Brownies", 25000))
-        cemilan_b.add_child(TreeNode("Kentang Goreng", 15000))
-        cemilan_b.add_child(TreeNode("Nugget Goreng", 15000))
-        cemilan_b.add_child(TreeNode("Burger", 8000))
-        cemilan_b.add_child(TreeNode("Sosis Goreng", 10000))
-        
-        minuman_b = TreeNode("Minuman")
-        minuman_b.add_child(TreeNode("Kopi Susu", 10000))
-        minuman_b.add_child(TreeNode("Air Mineral", 4000))
-        minuman_b.add_child(TreeNode("Kopi Gula Aren", 15000))
-        minuman_b.add_child(TreeNode("Jahe Hangat", 12000))
-        minuman_b.add_child(TreeNode("Teh Tarik", 8000))
-
-        resto_b.add_child(cemilan_b)
-        resto_b.add_child(minuman_b)
-
-        # --- MASUKKAN SEMUA RESTORAN KE ROOT ---
-        root.add_child(resto_a)
-        root.add_child(resto_b)
-
-        # Kembalikan bongkahan struktur Tree utuh
-        return root 
-
-    # ==========================================
-    # BAGIAN 3: UTILITAS TAMPILAN
-    # ==========================================
-
+    """Method untuk membersihkan layar terminal agar UI terlihat rapi."""
     def clear_screen(self):
-        """Berfungsi untuk membersihkan layar terminal agar UI terlihat rapi."""
         print("\n" * 0) 
 
+    """Method untuk Menampilkan promo dari depan ke belakang."""
     def tampilkan_promo_dll(self):
-        """Menampilkan data dari struktur Double Linked List (DLL).
-        Melakukan traversal (penelusuran) dari head sampai node terakhir.
-        """
         current = self.head_promo
         print("\n=== DAFTAR PROMO (DOUBLE LINKED LIST) ===")
         
-        # Selama current tidak kosong (bukan None), cetak isinya, lalu maju ke node selanjutnya
+        # Selama current tidak kosong (None), cetak isinya, lalu maju ke node selanjutnya
         while current:
             print(f"- {current.promo}")
             current = current.next
 
     # ============================================
-    # BAGIAN 4: SISTEM NAVIGASI (STACK) & MENU UI
+    # BAGIAN 3: SISTEM NAVIGASI (STACK) & MENU UI
     # ============================================
 
     def run(self):
-        """Sistem Utama Aplikasi (Engine). 
+        """Sistem Utama Aplikasi. 
         Menggunakan konsep Stack (LIFO: Last In First Out) untuk mengatur perpindahan halaman.
         """
         # Halaman pertama yang dimasukkan ke stack adalah menu_utama (halaman login)
@@ -246,6 +190,8 @@ class FoodDeliveryCLI:
                 # Mencegah program error berantakan jika user menekan Ctrl+C
                 print("\nProgram dihentikan paksa oleh pengguna. Menyimpan data...")
                 save_data(self)
+                simpan_semua_cart(self)
+                # Menghentikan seluruh program
                 sys.exit()
 
     def menu_utama(self):
@@ -263,9 +209,11 @@ class FoodDeliveryCLI:
                 self.daftar()
             elif pilih == "0":
                 save_data(self)
-                
+                simpan_semua_cart(self)
                 # Menghentikan seluruh program
                 sys.exit() 
+            else:
+                print("Pilihan tidak valid")
         except Exception as e:
             print(f"Error: {e}")
 
@@ -275,11 +223,11 @@ class FoodDeliveryCLI:
         # Membuat fungsi lokal agar fungsi ini bisa dibungkus dan dimasukkan ke dalam Stack Navigasi
         def menu_kategori():
             self.clear_screen()
-            print(f"=== KATEGORI {resto_node.nama_menu.upper()} ===")
+            print(f"=== KATEGORI {resto_node.nama.upper()} ===")
             
             # Looping mengambil anak-anak dari node Restoran (yaitu node Kategori)
             for i, child in enumerate(resto_node.children, 1):
-                print(f"{i}. {child.nama_menu}")
+                print(f"{i}. {child.nama}")
             print("99. Back")
             
             try:
@@ -287,13 +235,22 @@ class FoodDeliveryCLI:
                 if pilih == "99":
                     # Menghapus halaman ini dari Stack, sehingga aplikasi otomatis kembali ke halaman sebelumnya (Dashboard)
                     self.history_stack.pop()
-                elif pilih.isdigit() and 1 <= int(pilih) <= len(resto_node.children):
-                    # Jika pilihan valid, ambil node kategori yang dipilih dan buka halaman item
-                    kategori_dipilih = resto_node.children[int(pilih)-1]
-                    self.tampilkan_menu_item(kategori_dipilih)
                 else:
-                    print("Pilihan tidak valid!")
-                    input("Enter...")
+                    try:
+                        pilih_angka = int(pilih)
+                        
+                        # Cek apakah angka berada di dalam rentang jumlah menu
+                        if 1 <= pilih_angka <= len(resto_node.children):
+                            kategori_dipilih = resto_node.children[pilih_angka - 1]
+                            self.tampilkan_menu_item(kategori_dipilih)
+                        else:
+                            print("Pilihan tidak valid! Masukkan nomor yang ada di daftar menu.")
+                            input("Enter...")
+                            
+                    except ValueError:
+                        # Muncul jika user sengaja memasukkan huruf, simbol, atau menekan enter kosong
+                        print("Pilihan tidak valid! Harap masukkan berupa angka.")
+                        input("Enter...")
             except Exception as e:
                 print(f"Error: {e}")
                 
@@ -304,11 +261,11 @@ class FoodDeliveryCLI:
         """Menampilkan menu makanan/minuman dari suatu Kategori (Tree Level 3)."""
         def menu_item():
             self.clear_screen()
-            print(f"=== MENU {kategori_node.nama_menu.upper()} ===")
+            print(f"=== MENU {kategori_node.nama.upper()} ===")
             
             # Looping mengambil anak-anak dari node Kategori (yaitu Node Menu Akhir)
             for i, item in enumerate(kategori_node.children, 1):
-                print(f"{i}. {item.nama_menu} - Rp{item.harga}")
+                print(f"{i}. {item.nama} - Rp{item.harga}")
             print("99. Back")
             
             try:
@@ -316,29 +273,39 @@ class FoodDeliveryCLI:
                 if pilih == "99":
                     # Buang halaman ini dari stack agar kembali ke layar Kategori
                     self.history_stack.pop() 
-                elif pilih.isdigit() and 1 <= int(pilih) <= len(kategori_node.children):
-                    item_dipilih = kategori_node.children[int(pilih)-1]
-                    
-                    # Simpan data makanan ke dalam keranjang user berbentuk Tuple: (Nama, Harga)
-                    self.logged_in_user.cart.append((item_dipilih.nama_menu, item_dipilih.harga))
-                    print(f"{item_dipilih.nama_menu} berhasil masuk keranjang!")
-                    input("Enter...")
                 else:
-                    print("Pilihan tidak valid!")
-                    input("Enter...")
+                    try:
+                        pilih_angka = int(pilih)
+                        
+                        # Cek apakah angka berada di dalam rentang jumlah item menu
+                        if 1 <= pilih_angka <= len(kategori_node.children):
+                            item_dipilih = kategori_node.children[pilih_angka - 1]
+                            
+                            # Simpan data makanan ke dalam keranjang user berbentuk Tuple: (Nama, Harga)
+                            self.logged_in_user.cart.append((item_dipilih.nama, item_dipilih.harga))
+                            save_data(self)
+                            simpan_semua_cart(self)  # Simpan cart
+                            print(f"{item_dipilih.nama} berhasil masuk keranjang!")
+                            input("Enter...")
+                        else:
+                            print("Pilihan tidak valid! Masukkan nomor yang ada di daftar menu.")
+                            input("Enter...")
+                            
+                    except ValueError:
+                        # Muncul jika input berupa huruf, simbol, atau kosong
+                        print("Pilihan tidak valid! Harap masukkan berupa angka.")
+                        input("Enter...")
             except Exception as e:
                 print(f"Error: {e}")
                 
         self.history_stack.append(menu_item)
 
     # ===============================================
-    # BAGIAN 5: FITUR PENCARIAN (SORTING & SEARCHING)
+    # BAGIAN 4: FITUR PENCARIAN (SORTING & SEARCHING)
     # ===============================================
 
     def cari_menu_global(self):
-        """Fitur untuk mencari menu dari seluruh restoran.
-        Menggunakan kombinasi Flattening Tree -> Merge Sort -> Binary Search.
-        """
+        """Fitur untuk mencari menu dari seluruh restoran."""
         try:
             semua_menu = []
             
@@ -346,7 +313,7 @@ class FoodDeliveryCLI:
             for resto in self.menu_tree.children:
                 for kategori in resto.children:
                     for item in kategori.children:
-                        semua_menu.append((item.nama_menu, item.harga))
+                        semua_menu.append((item.nama, item.harga))
             
             # (SORTING) Mengurutkan list menu berdasarkan nama menggunakan algoritma Merge Sort
             # Binary Search WAJIB dilakukan pada data yang sudah terurut (Sorted)
@@ -360,8 +327,15 @@ class FoodDeliveryCLI:
             
             if hasil:
                 print(f"Ketemu! {hasil[0]} harganya Rp{hasil[1]}")
-                if input("Tambah ke keranjang? (y/n): ").strip().lower() == "y":
-                    self.logged_in_user.cart.append(hasil)
+                while True:
+                    if input("Tambah ke keranjang? (y/n): ").strip().lower() == "y":
+                        self.logged_in_user.cart.append(hasil)
+                        save_data(self)
+                        simpan_semua_cart(self)  
+                        print(f"Pesanan {hasil} berhasil ditambahkan")
+                        break
+                    else:
+                        print("Pilihan tidak valid")
             else:
                 print("Menu tidak ditemukan.")
             input("Enter...")
@@ -369,6 +343,7 @@ class FoodDeliveryCLI:
             print(f"Error: {e}")
 
     def menu_dashboard(self):
+        self.clear_screen()
         """Halaman utama saat user berhasil login."""
         print(f"=== DASHBOARD | {self.logged_in_user.username} ===")
         print(f"Saldo: Rp{self.logged_in_user.saldo}")
@@ -389,6 +364,7 @@ class FoodDeliveryCLI:
                 try:
                     nom = int(input("Nominal Top-Up: "))
                     if nom > 0:
+                        # Menambahkan saldo user yang sedang login
                         self.logged_in_user.saldo += nom
                         save_data(self)
                         print(f"Saldo berhasil ditambahkan! Saldo Anda: Rp{self.logged_in_user.saldo}")
@@ -441,7 +417,7 @@ class FoodDeliveryCLI:
             print(f"Error: {e}")
 
     # =====================================================
-    # BAGIAN 6: SISTEM PEMBAYARAN & LOGIKA GRAPH (CHECKOUT)
+    # BAGIAN 5: SISTEM PEMBAYARAN & LOGIKA GRAPH (CHECKOUT)
     # =====================================================
 
     def checkout(self):
@@ -463,8 +439,9 @@ class FoodDeliveryCLI:
             jarak, rute = 0, []
             lokasi_user = ""
             while True:
-                lokasi_user = input("Lokasi Pengiriman (Kampus/Kost/Mall) atau 'batal': ").strip().title()
-                if lokasi_user.lower() == 'batal': return
+                lokasi_user = input("Locations Pengiriman (Kampus/Kost/Mall) atau 'batal': ").strip().title()
+                if lokasi_user.lower() == 'batal': 
+                    return
             
                 # Mencari jalur dari Restoran A ke lokasi user menggunakan fungsi rekursif pencarian Graph
                 jarak, rute = self.peta.cari_jarak_rekursif("Restoran A", lokasi_user)
@@ -479,14 +456,11 @@ class FoodDeliveryCLI:
                     print("--> Lokasi tidak valid!\n")
         
             # --- MANAJEMEN PROMO ---
-            
-            # Jika user belum punya catatan riwayat promo, buatkan dictionary baru
-            if not hasattr(self.logged_in_user, 'promo_usage'):
-                self.logged_in_user.promo_usage = {"HEMAT10": 0, "MAKANPUAS": 0, "MakanEnak": 0}
-
+          
             # Menggunakan Set agar tidak ada promo ganda di satu pesanan
             promo_terpakai_saat_ini = set() 
             total_diskon_ongkir = 0
+            total_diskon_makanan = 0 
         
             while len(promo_terpakai_saat_ini) < 3:
                 # Cek sisa kuota promo yang bisa dipakai oleh user ini
@@ -498,9 +472,9 @@ class FoodDeliveryCLI:
                 if "HEMAT10" not in promo_terpakai_saat_ini:
                     print(f"1. HEMAT10  (sisa {sisa_h}) -> Potongan Rp5.000")
                 if "MAKANPUAS" not in promo_terpakai_saat_ini:
-                    print(f"2. MAKANPUAS (sisa {sisa_p}) -> Diskon 15%")
+                    print(f"2. MAKANPUAS (sisa {sisa_p}) -> Diskon Ongkir 15%")
                 if "MakanEnak" not in promo_terpakai_saat_ini:
-                    print(f"3. MakanEnak (sisa {sisa_m}) -> Diskon 5%") 
+                    print(f"3. MakanEnak (sisa {sisa_m}) -> Diskon Makanan 5%") 
 
                 pilihan = input("\nPilih nomor promo atau Enter untuk lewati: ").strip()
             
@@ -521,40 +495,54 @@ class FoodDeliveryCLI:
                     continue
 
                 # Logika kalkulasi perhitungan diskon berdasarkan promo
-                diskon = 0
+                diskon_ongkir_saat_ini = 0
+                diskon_makanan_saat_ini = 0
+                
                 if pilihan == "1" and sisa_h > 0:
-                    diskon = 5000
+                    diskon_ongkir_saat_ini = 5000
                 elif pilihan == "2" and sisa_p > 0:
-                    diskon = int(ongkir_awal * 0.15)
+                    diskon_ongkir_saat_ini = int(ongkir_awal * 0.15)
                 elif pilihan == "3" and sisa_m > 0:
-                    diskon = int(ongkir_awal * 0.5)
+                    diskon_makanan_saat_ini = int(harga_makanan * 0.05) 
                 else:
                     print("-> Kuota promo habis!")
                     continue
 
-                total_diskon_ongkir += diskon
+                # Fitur limitasi: Memastikan diskon tidak pernah melampaui harga dasarnya
+                total_diskon_ongkir = min(ongkir_awal, total_diskon_ongkir + diskon_ongkir_saat_ini)
+                total_diskon_makanan = min(harga_makanan, total_diskon_makanan + diskon_makanan_saat_ini)
+                
                 promo_terpakai_saat_ini.add(promo_id)
                 print(f"-> Sukses menambahkan {promo_id}!")
 
                 # Beri opsi jika user ingin menumpuk promo
-                if len(promo_terpakai_saat_ini) <= 3:
-                    tambah = input("Tambah promo lain? (y/n): ").lower()
-                    if tambah != 'y': break
+                try:
+                    if len(promo_terpakai_saat_ini) < 3:
+                        tambah = input("Tambah promo lain?(maksimal 2) (y/n): ").lower()
+                        if tambah != 'y': break
+                    else:
+                        print("Sudah mencapai batas pengunaan")
+                except Exception as e:
+                    print(f"Error: {e}")
 
-            # Pastikan ongkir tidak bernilai minus setelah dipotong diskon
+            # Pastikan ongkir dan makanan tidak minus setelah diskon
             ongkir_akhir = max(0, ongkir_awal - total_diskon_ongkir)
-            total_bayar = harga_makanan + ongkir_akhir
+            harga_makanan_akhir = max(0, harga_makanan - total_diskon_makanan)
+            total_bayar = harga_makanan_akhir + ongkir_akhir
 
             # --- RINGKASAN & KONFIRMASI ---
             print(f"\n--- RINGKASAN PEMBAYARAN ---")
             print(f"Total Makanan : Rp{harga_makanan}")
-            print(f"Ongkir Awal   : Rp{ongkir_awal}")
-            print(f"Total Diskon  : -Rp{total_diskon_ongkir}")
-            print(f"TOTAL BAYAR   : Rp{total_bayar}")
-            print(f"Saldo Anda    : Rp{self.logged_in_user.saldo}")
+            if total_diskon_makanan > 0:
+                print(f"Diskon Makanan: -Rp{total_diskon_makanan}")
+                print(f"Ongkir Awal   : Rp{ongkir_awal}")
+                print(f"Diskon Ongkir : -Rp{total_diskon_ongkir}")
+                print(f"TOTAL BAYAR   : Rp{total_bayar}")
+                print(f"Saldo Anda    : Rp{self.logged_in_user.saldo}")
 
             konfirmasi = input("\nKonfirmasi Bayar? (y/n): ").lower()
-            if konfirmasi != 'y': return
+            if konfirmasi != 'y':
+                return
 
             # --- EKSEKUSI PEMBAYARAN ---
             if self.logged_in_user.saldo >= total_bayar:
@@ -582,7 +570,8 @@ class FoodDeliveryCLI:
                 # Kosongkan keranjang setelah berhasil checkout
                 self.logged_in_user.cart = []
             
-                save_data(self) 
+                save_data(self)
+                simpan_semua_cart(self) 
                 print(f"\nBERHASIL! Driver {driver} sedang menuju lokasi.")
             else:
                 print("\nSaldo tidak cukup!")
