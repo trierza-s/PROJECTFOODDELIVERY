@@ -1,5 +1,40 @@
+import json
 import os
 from models.user import User
+
+def simpan_semua_cart(app):
+    """Menyimpan keranjang semua user ke file JSON di dalam folder 'data'."""
+    # Mengecek dan membuat folder 'data' secara otomatis jika belum ada
+    os.makedirs("data", exist_ok=True) 
+    
+    # Path diarahkan ke dalam folder data
+    file_path = os.path.join("data", "carts_backup.json") 
+    
+    try:
+        with open(file_path, "w") as f:
+            # app merepresentasikan 'self' dari class FoodDeliveryCLI
+            data = {uname: user.cart for uname, user in app.users.items()}
+            json.dump(data, f)
+    except Exception as e:
+        print(f"Gagal menyimpan keranjang: {e}")
+
+def muat_semua_cart(app):
+    """Memuat keranjang user dari file JSON saat aplikasi dijalankan."""
+    file_path = os.path.join("data", "carts_backup.json")
+    
+    # Jika filenya belum ada (misal saat program pertama kali dijalankan), abaikan
+    if not os.path.exists(file_path):
+        return
+        
+    try:
+        with open(file_path, "r") as f:
+            data = json.load(f)
+            for uname, cart in data.items():
+                if uname in app.users:
+                    # Kembalikan tipe data ke dalam Tuple (Nama, Harga)
+                    app.users[uname].cart = [tuple(item) for item in cart]
+    except Exception as e:
+        print(f"Gagal memuat keranjang: {e}")
 
 def load_data(self):
     """
@@ -16,27 +51,28 @@ def load_data(self):
         # Variabel sementara untuk menampung data sebelum dijadikan objek User
         uname, pwd, saldo = None, None, 0
         # Default sisa kuota promo jika tidak ditemukan di file
-        s_hemat, s_puas, s_enak = 2, 3, 5 
+        sisa_hemat, sisa_puas, sisa_enak = 2, 3, 5 
         
         for line in f:
-            line = line.strip() # Menghapus spasi/newline di awal dan akhir baris
+            # Menghapus spasi/newline di awal dan akhir baris
+            line = line.strip() 
             
             # Jika baris kosong atau berisi garis pemisah '---', tandanya satu blok data user selesai
-            if not line or line.startswith("-"):
+            if not line or line[0] == "-":
                 if uname:
                     # Buat objek User baru dengan data yang sudah terkumpul
                     u = User(uname, pwd, saldo)
                     # Hitung balik penggunaan promo (Usage = Kuota Maksimal - Sisa di File)
                     u.promo_usage = {
-                        "HEMAT10": 2 - s_hemat, 
-                        "MAKANPUAS": 3 - s_puas, 
-                        "MakanEnak": 5 - s_enak
+                        "HEMAT10": 2 - sisa_hemat, 
+                        "MAKANPUAS": 3 - sisa_puas, 
+                        "MakanEnak": 5 - sisa_enak
                     }
-                    # Simpan objek user ke dalam dictionary dengan key berupa username
+                    # Simpan objek user (u) ke dalam dictionary dengan key berupa username (uname)
                     self.users[uname] = u
                     
                     # Reset variabel untuk membaca user berikutnya di loop selanjutnya
-                    uname, pwd, saldo, s_hemat, s_puas, s_enak = None, None, 0, 2, 3, 5
+                    uname, pwd, saldo, sisa_hemat, sisa_puas, sisa_enak = None, None, 0, 2, 3, 5
                 continue
             
             # Proses parsing baris berdasarkan teks label sebelum tanda titik dua (:)
@@ -48,11 +84,11 @@ def load_data(self):
             elif "Saldo" in line: 
                 saldo = int(line.split(":")[1].strip()) 
             elif "Sisa Hemat" in line: 
-                s_hemat = int(line.split(":")[1].strip())
+                sisa_hemat = int(line.split(":")[1].strip())
             elif "Sisa Puas" in line: 
-                s_puas = int(line.split(":")[1].strip())
+                sisa_puas = int(line.split(":")[1].strip())
             elif "Sisa Enak" in line: 
-                s_enak = int(line.split(":")[1].strip())
+                sisa_enak = int(line.split(":")[1].strip())
 
 def save_data(self):
     """
